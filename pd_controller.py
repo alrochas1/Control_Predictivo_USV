@@ -2,18 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from models.ackermann_model import ackermann_model
+from controller.pd_controller import pd_controller
 
-
-# Controlador PD para el ángulo de dirección
-def pd_controller(current_state, target_state, Kp=2.0, Kd=0.1):
-    error_lateral = np.sqrt((target_state[0] - current_state[0])**2 + 
-                            (target_state[1] - current_state[1])**2)
-    error_heading = np.arctan2(target_state[1] - current_state[1], 
-                               target_state[0] - current_state[0]) - current_state[2]
-    
-    # Derivada (solo el error angular)
-    phi = Kp * error_heading + Kd * error_lateral
-    return np.clip(phi, -np.pi/4, np.pi/4)  # Límite del ángulo de dirección
 
 # Parámetros de simulación
 dt = 0.1  # Paso de tiempo (s)
@@ -27,8 +17,13 @@ y_ref = np.sin(time / 5)
 theta_ref = np.arctan(np.gradient(y_ref, x_ref))  # Aproximación de orientación
 trajectory = np.vstack((x_ref, y_ref, theta_ref)).T
 
+# Cálculo del ángulo inicial ------------------------------
+x_start, y_start = trajectory[0, 0], trajectory[0, 1]
+x_next, y_next = trajectory[1, 0], trajectory[1, 1]
+initial_theta = np.arctan2(y_next - y_start, x_next - x_start)
+
 # Simulación del modelo Ackermann
-state = np.array([0, 0, 0])  # Estado inicial [x, y, theta]
+state = np.array([x_start, y_start, initial_theta])  # Estado inicial [x, y, theta]
 v = 1.0  # Velocidad constante (m/s)
 states = [state]
 
