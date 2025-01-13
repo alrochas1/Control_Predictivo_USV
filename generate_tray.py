@@ -30,10 +30,11 @@ def generate_random_trajectory(num_points, x_range, y_range, num_samples):
 import matplotlib.pyplot as plt
 
 # Generar varias trayectorias aleatorias
-trajectories = [generate_random_trajectory(num_points=6, 
+N = 15
+trajectories = [generate_random_trajectory(num_points=N, 
                                            x_range=(0, 10), 
                                            y_range=(-5, 5), 
-                                           num_samples=100) for _ in range(5)]
+                                           num_samples=N*50) for _ in range(2)]
 
 # Visualización
 plt.figure(figsize=(10, 6))
