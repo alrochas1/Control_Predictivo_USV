@@ -14,14 +14,14 @@ T = 20    # Tiempo total (s)
 
 # Simulación del modelo Ackermann
 
-N = 6
-N_t = 450
-dt = 1/N/4
-# trajectory = training.sin_tray(dt, 50)
-trajectory = aux.generate_random_trajectory(num_points=N, 
-                                           x_range=(0, 100), 
-                                           y_range=(-1, 1), 
-                                           num_samples=N*N_t)
+N = 5
+N_t = 400
+dt = 1/N/N_t*50
+trajectory = training.sin_tray(dt, 50)
+# trajectory = aux.generate_random_trajectory(num_points=N, 
+                                        #    x_range=(0, 100), 
+                                        #    y_range=(-1, 1), 
+                                        #    num_samples=N*N_t)
 
 
 initial_theta = aux.get_start_state(trajectory)
@@ -29,7 +29,7 @@ state = np.array([trajectory[0, 0], trajectory[0, 1], initial_theta])  # Estado 
 v = 1.0
 states = [state]
 
-for i in range(N*N_t - 1):
+for i in range(len(trajectory) - 1):
     target_state = trajectory[i + 1]
     phi = pd_controller(state, target_state, 20, 0.001)
     state = model(state, [v, phi], dt)

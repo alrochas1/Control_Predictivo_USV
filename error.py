@@ -1,18 +1,23 @@
 import numpy as np
 
-def calculate_error(predicted_states, desired_trajectory):
-    """
-    Calcula el error promedio entre los estados predichos y la trayectoria deseada.
+def calculate_error(x, y, theta, x_target, y_target):
+
+    error_position = np.sqrt((x_target - x)**2 + (y_target - y)**2)
     
-    Parameters:
-    - predicted_states: np.ndarray, estados predichos por la red neuronal, forma (N, 3) -> [x, y, theta]
-    - desired_trajectory: np.ndarray, trayectoria deseada, forma (N, 3) -> [x_ref, y_ref, theta_ref]
+    desired_theta = np.arctan2(y_target - y, x_target - x)
     
-    Returns:
-    - mse: float, error cuadrático medio (MSE)
-    """
-    # Error entre los puntos predichos y los deseados
-    error = predicted_states - desired_trajectory
-    # Calculamos el MSE (Error Cuadrático Medio)
-    mse = np.mean(np.sum(error**2, axis=1))  # Error acumulado por cada estado [x, y, theta]
-    return mse
+    error_orientation = desired_theta - theta
+    error_orientation = (error_orientation + np.pi) % (2 * np.pi) - np.pi
+    
+    return error_position, error_orientation
+
+# def calculate_error(predicted_states, desired_trajectory):
+
+#     predicted_states = np.array(predicted_states)
+#     desired_trajectory = np.array(desired_trajectory)
+
+#     error = predicted_states - desired_trajectory
+
+#     # Calcula el MSE (Error Cuadrático Medio)
+#     mse = np.mean(error**2)
+#     return mse
