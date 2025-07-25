@@ -13,7 +13,7 @@ class AckermannModel:
     def update(self, x, y, theta, velocity, steer_angle, dt):
         
         steer_angle = np.clip(steer_angle, -self.max_steer_angle, self.max_steer_angle)
-        velocity = np.clip_by_value(velocity, 0, 20)
+        velocity = np.clip(velocity, 0, 20)
         
         x_new = x + velocity * np.cos(theta) * dt
         y_new = y + velocity * np.sin(theta) * dt

@@ -1,47 +1,13 @@
 import numpy as np
-from scipy.interpolate import interp1d
+# from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 
 import config
-from tray import aux, training
+from tray import aux
 
 from models.ackermann_model import AckermannModel as model
 from controller.pd_controller import PDController
 from error import calculate_error
-
-
-
-
-# def random_trajectory(num_points, x_range, y_range):
-
-#     x_points = np.zeros(num_points)
-#     x_points[0] = 0; x_points[num_points-1] = x_range[1]
-#     x_points[1:num_points-1] = np.random.uniform(x_range[0], x_range[1], num_points-2)
-
-#     y_points = np.zeros(num_points)
-#     y_points[0] = 0; 
-#     y_points[1:num_points-1] = np.random.uniform(y_range[0], y_range[1], num_points-2)
-    
-#     sorted_indices = np.argsort(x_points)
-#     x_points = x_points[sorted_indices]
-#     y_points = y_points[sorted_indices]
-    
-#     interp_func = interp1d(x_points, y_points, kind='cubic', fill_value="extrapolate")
-    
-#     x_trajectory = np.linspace(x_range[0], x_range[1], int(100*1/dt))
-#     y_trajectory = interp_func(x_trajectory)
-
-#     plt.figure()
-#     plt.plot(x_trajectory, y_trajectory, label="Trayectoria generada")
-#     plt.scatter(x_points, y_points, color='red', label="Puntos aleatorios")
-#     plt.xlabel("X (m)")
-#     plt.ylabel("Y (m)")
-#     plt.legend()
-#     plt.title("Trayectoria Aleatoria Generada")
-#     plt.show()
-    
-#     return x_trajectory, y_trajectory
-
 
 
 # Parámetros para la generación de la trayectoria
@@ -67,7 +33,7 @@ vehicle = model(config.L, config.max_steer)
 
 # Condiciones iniciales del vehículo
 x, y = 0.0, 0.0
-theta = aux.compute_start(tray)
+theta = aux.compute_start(tray)*0   # REVISAR
 velocity = 0.05
 
 

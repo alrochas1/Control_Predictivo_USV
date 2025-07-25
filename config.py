@@ -7,3 +7,5 @@ dt = 0.1
 N = 5   # N >= 3
 x_range = (0, 40)  # Rango en el eje x
 y_range = (-5, 5)  # Rango en el eje y
+
+threshold = 0.3
