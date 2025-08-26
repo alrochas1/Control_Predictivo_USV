@@ -1,11 +1,24 @@
+import numpy as np
+
 # Parametros del modelo
 L = 0.3
 max_steer = 80
+max_steer_rad = np.radians(max_steer)
+vmax = 2.5
+vmin = 0.0
 
 # Parámetros para la generación de la trayectoria
 dt = 0.1
-N = 5   # N >= 3
+N = 7   # N >= 3
 x_range = (0, 40)  # Rango en el eje x
-y_range = (-5, 5)  # Rango en el eje y
+y_range = (-8, 8)  # Rango en el eje y
 
-threshold = 0.3
+
+# Parametros para el control
+kp = 10.0
+ki = 20.0
+kd = 0.1
+
+max_lateral_error = 20
+
+waypoint_threshold = 0.3 # metros para considerar que se alcanzó un waypoint

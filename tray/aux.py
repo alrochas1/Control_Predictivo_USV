@@ -11,16 +11,10 @@ def compute_start(tray):
     initial_theta = np.arctan2(y_next - y_start, x_next - x_start)
     return initial_theta
 
-# def get_start_state(tray):
-#     x_start, y_start = tray[0, 0], tray[0, 1]
-#     x_next, y_next = tray[1, 0], tray[1, 1]
-#     initial_theta = np.arctan2(y_next - y_start, x_next - x_start)
-#     return initial_theta
-
 
 def bezier_curve(points, dt):
 
-    num_points = int(100*1/dt)
+    num_points = int(5/dt)
 
     n = len(points) - 1                # Grado de la curva
     t = np.linspace(0, 1, num_points)  # Parámetro t
@@ -61,40 +55,28 @@ def random_bezier_trajectory(num, x_range, y_range, show=True):
     return trajectory
 
 
+# Usado por Gym
+def get_reference_trajectory():
+    # Obtener los puntos [x, y]
+    xy_trajectory = random_bezier_trajectory(num=config.N, x_range=config.x_range, y_range=config.y_range, show=False)
+    
+    # Calcula la orientación (yaw) deseada para cada punto de la trayectoria.
+    # La orientación se aproxima por la derivada: theta = arctan2(dy, dx)
+    dx = np.diff(xy_trajectory[:, 0])
+    dy = np.diff(xy_trajectory[:, 1])
+    
+    # Calcula el yaw para cada segmento
+    yaw = np.arctan2(dy, dx)
+    # El último punto tiene el mismo yaw que el penúltimo
+    yaw = np.append(yaw, yaw[-1])
+    
+    # Construye la trayectoria completa: [x, y, theta]
+    full_trajectory = np.column_stack((xy_trajectory, yaw))
+    return full_trajectory
 
 
-# Para generar trayectorias
-
-# # Generar Puntos Aleatorios
-# def generate_random_points(num_points, x_range, y_range):
-#     if num_points < 2:
-#         raise ValueError("El número de puntos debe ser al menos 2 para definir el inicio y el final.")
-
-#     x = np.sort(np.random.uniform(x_range[0], x_range[1], num_points - 2))
-#     y = np.random.uniform(y_range[0], y_range[1], num_points - 2)
-
-#     x = np.insert(x, 0, 0)
-#     y = np.insert(y, 0, 0)
-#     x = np.append(x, x_range[1])
-#     y = np.append(y, np.random.uniform(y_range[0], y_range[1]))
-
-#     return x, y
-
-
-# # Interpolación Cúbica
-# from scipy.interpolate import CubicSpline
-
-# def cubic_interpolation(x_points, y_points, num_samples):
-#     spline = CubicSpline(x_points, y_points)
-#     x_new = np.linspace(x_points[0], x_points[-1], num_samples)
-#     y_new = spline(x_new)
-#     return x_new, y_new
-
-# # Generar la Trayectoria
-# def generate_random_trajectory(num_points, x_range, y_range, num_samples):
-#     x_points, y_points = generate_random_points(num_points, x_range, y_range)
-#     x, y = cubic_interpolation(x_points, y_points, num_samples)
-#     theta = np.arctan2(np.gradient(y), np.gradient(x))  # Orientación basada en las derivadas
-#     return np.vstack((x, y, theta)).T
-
-
+# Calcula la diferencia más corta entre dos ángulos (alpha - beta)
+# en el rango [-pi, pi] de forma robusta.
+def angle_difference(alpha, beta):
+    diff = alpha - beta
+    return np.arctan2(np.sin(diff), np.cos(diff))
