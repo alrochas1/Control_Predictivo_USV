@@ -39,6 +39,7 @@ class AckermannTrakingEnv(gym.Env):
         self.dt = config.dt
         self.max_steps = 500/config.dt
         self.current_step = 0
+        self.x_final, self.y_final, _ = self.reference_trajectory[-1]
         
         # Estado inicial (se establece correctamente en reset())
         self.state = None # [error_lateral, error_orientacion]
@@ -66,7 +67,7 @@ class AckermannTrakingEnv(gym.Env):
         dx = x_target - x
         dy = y_target - y
         distance = np.sqrt((x_target - x)**2 + (y_target - y)**2)
-        print(f"Distance to target: {distance:.3f} m")
+        # print(f"Distance to target: {distance:.3f} m")
         
         # 2. ERROR LATERAL (Cross-track error): 
         # Proyección del vector en la dirección perpendicular a la orientación actual
@@ -143,8 +144,8 @@ class AckermannTrakingEnv(gym.Env):
         # 2. Aplicar la acción al modelo cinemático del vehículo
         # (Usa TU función aquí)
         x_old, y_old, theta_old = self.vehicle_pose
-        new_x, new_y, new_theta = self.vehicle.update(x_old, y_old, theta_old, v, delta, self.dt)
-        self.vehicle_pose = np.array([new_x, new_y, new_theta])
+        x, y, theta = self.vehicle.update(x_old, y_old, theta_old, v, delta, self.dt)
+        self.vehicle_pose = np.array([x, y, theta])
         # print(f"Posicion: ({new_x:.2f}, {new_y:.2f}, {new_theta:.2f}), Velocidad: {v:.2f}")
 
         # 3. Calcular la nueva observación (los nuevos errores)
@@ -152,37 +153,62 @@ class AckermannTrakingEnv(gym.Env):
         self.state = np.array([lateral_error, orientation_error], dtype=np.float32)
 
         # DEBUG
-        if abs(orientation_error) > 1.0:  # Si hay un salto grande
-            print(f"¡SALTO DETECTADO!")
-            print(f"Estado actual: {self.state}")
-            print(f"Waypoint anterior: {old_waypoint_index}, Target: {old_target}")
-            print(f"Waypoint nuevo: {self.current_waypoint_index}")
-            print(f"Error normalizado: {orientation_error}")
+        # if abs(orientation_error) > 1.0:  # Si hay un salto grande
+            # print(f"¡SALTO DETECTADO!")
+            # print(f"Estado actual: {self.state}")
+            # print(f"Waypoint anterior: {old_waypoint_index}, Target: {old_target}")
+            # print(f"Waypoint nuevo: {self.current_waypoint_index}")
+            # print(f"Error normalizado: {orientation_error}")
         # END DEBUG
-        
-        # 4. Calcular la RECOMPENSA (PENDIENTE DE HACER)
-        # - Recompensa base por avanzar (incentiva la velocidad positiva)
-        reward = v * self.dt
-        # - Penalización por errores (¡Fórmula clave!)
-        reward -= 0.5 * abs(lateral_error)  # Penaliza el error lateral
-        reward -= 0.1 * abs(orientation_error) # Penaliza el error de orientación
-        # - Penalización MUY FUERTE por salirse de la carretera
-        # if abs(lateral_error) > 2.0: # Si se desvía más de 2 metros
-        #     reward -= 10.0
-        #     terminated = True
-        # else:
-        #     terminated = False
-        terminated = False
 
-        # Terminar si llegamos al final de la trayectoria
-        if self.current_waypoint_index >= len(self.reference_trajectory) - 1:
-            # Verificar si estamos cerca del punto final
-            final_point = self.reference_trajectory[-1]
-            x, y, _ = self.vehicle_pose
-            distance_to_end = np.sqrt((final_point[0] - x)**2 + (final_point[1] - y)**2)
-            if distance_to_end < self.waypoint_threshold:
-                reward += 100.0  # Gran recompensa por completar la trayectoria
-                terminated = True
+        # ---------------------------------------------------------------
+        # AQUI ESTA LO IMPORTANTE, LA FUNCION DE RECOMPENSA ---------
+
+        # 1. RECOMPENSA BASE por velocidad (incentivar movimiento)
+        reward = 0.1 * v  # Pequeña recompensa por moverse
+        if v < 0.1:
+            reward -= 5.0  # Penalización por estar parado
+
+        # 2. GRAN RECOMPENSA por buen seguimiento (exponencial inversa al error)
+        # Esto es CLAVE: cuanto menor error, mayor recompensa
+        tracking_reward = np.exp(-0.5 * abs(lateral_error)) + np.exp(-2.0 * abs(orientation_error))
+        reward += tracking_reward
+        
+        # 3. PENALIZACIÓN por acciones bruscas (suavidad del control)
+        # Penalizar cambios bruscos en el ángulo de dirección
+        if hasattr(self, 'prev_steer'):
+            steer_change = abs(action[1] - self.prev_steer)
+            reward -= 0.1 * steer_change
+        self.prev_steer = action[1]
+        
+        # 4. RECOMPENSA por PROGRESO a lo largo de la trayectoria
+        # Calcular cuánto hemos avanzado en la trayectoria
+        current_progress = self.current_waypoint_index / len(self.reference_trajectory)
+        if hasattr(self, 'prev_progress'):
+            progress_reward = 10.0 * (current_progress - self.prev_progress)  # Grande por avanzar
+            reward += progress_reward
+        self.prev_progress = current_progress
+        
+        # 5. CONDICIONES DE TERMINACIÓN (¡IMPORTANTE!)
+        terminated = False
+        truncated = False
+        
+        # Terminar si nos salimos mucho
+        if abs(lateral_error) > 3.0:  # Demasiado desviado
+            reward -= 20.0  # Gran penalización
+            terminated = True
+        
+        # Terminar si completamos la trayectoria (¡RECOMPENSA FINAL!)
+        distance_to_end = np.sqrt((self.x_final - x)**2 + (self.y_final - y)**2)
+    
+        # Terminar si estamos muy cerca del punto final
+        if distance_to_end < 0.5: 
+            reward += 100.0  # ENORME recompensa por éxito
+            terminated = True
+            print(f"¡Trayectoria completada con éxito! "
+                f"Distancia al final: {distance_to_end:.2f}m, ")
+
+        # ---------------------------------------------------------------
             
         # 5. Comprobar condiciones de terminación (truncated es por límite de pasos)
         self.current_step += 1
@@ -192,8 +218,12 @@ class AckermannTrakingEnv(gym.Env):
         info = {
             "pose": self.vehicle_pose,
             "action": action,
+            "tracking_reward": tracking_reward,
             "current_waypoint": self.current_waypoint_index,
-            "total_waypoints": len(self.reference_trajectory)
+            "total_waypoints": len(self.reference_trajectory),
+            "progress": current_progress,
+            "lateral_error": lateral_error,
+            "orientation_error": orientation_error
         }
         
         # 7. Devolver la tupla (obs, reward, terminated, truncated, info)

@@ -176,4 +176,5 @@ cython_debug/
 *.env
 *.env.*
 
-./legacy
+legacy/
+tb_logs/
