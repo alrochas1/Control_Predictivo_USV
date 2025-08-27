@@ -34,4 +34,28 @@ class TrackingCallback(BaseCallback):
         if len(self.episode_rewards) > 0:
             final_mean_reward = np.mean(self.episode_rewards[-10:])
             print(f"Training completed. Final mean reward: {final_mean_reward:.2f}")
+
+
+
+# Evaluación completa con métricas y gráficas
+def extract_metrics(env, episode, save_plots=True):
+
+    all_metrics = []
+    
+    print(f"\n=== EPISODIO {episode + 1} ===")
+        
+    # Obtener métricas del episodio
+    metrics = env.get_metrics()
+    all_metrics.append(metrics)
+        
+    print(f"Reward total: {metrics['total_reward']:.1f}")
+    print(f"Velocidad media: {metrics['mean_speed']:.2f} m/s")
+    print(f"Error lateral medio: {metrics['mean_lateral_error']:.2f} m")
+    print(f"Pasos: {metrics['episode_length']}")
+        
+    # Guardar gráficas
+    if save_plots:
+        env.plot_metrics(save_path=f"./images/episode_{episode+1}_metrics.png")
+
+    # return all_metrics
     

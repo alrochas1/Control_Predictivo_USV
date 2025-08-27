@@ -2,13 +2,13 @@ import numpy as np
 
 # Parametros del modelo
 L = 0.3
-max_steer = 80
+max_steer = 50
 max_steer_rad = np.radians(max_steer)
 vmax = 2.5
 vmin = 0.0
 
 # Parámetros para la generación de la trayectoria
-dt = 0.1
+dt = 0.01
 N = 7   # N >= 3
 x_range = (0, 40)  # Rango en el eje x
 y_range = (-8, 8)  # Rango en el eje y

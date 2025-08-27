@@ -178,3 +178,5 @@ cython_debug/
 
 legacy/
 tb_logs/
+images/
+ackermann_ppo_model copy.zip

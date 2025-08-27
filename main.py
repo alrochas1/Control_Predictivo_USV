@@ -3,6 +3,7 @@ import gymnasium as gym
 from stable_baselines3 import PPO
 
 from gym.env import AckermannTrakingEnv  # Importa tu entorno
+from tray.tracker import extract_metrics  # Función para extraer métricas y gráficas
 
 
 model_path="ackermann_ppo_model.zip"
@@ -44,13 +45,13 @@ for episode in range(num_episodes):
         steps += 1
         
         # Visualización
-        if render and steps % 5 == 0:  # Render cada 5 steps
+        if render and steps % 1 == 0:  # Render cada 5 steps
             env.render()
             
         # Print cada 50 steps
         if steps % 50 == 0:
             x, y, theta = env.vehicle_pose
-            print(f"Step {steps}: Posición: ({x:.2f}, {y:.2f}, {theta:.2f}), \n \t Reward acumulado: {total_reward:.2f}, \n Velocidad: {action[0]:.2f}")
+            print(f"Step {steps}: Posición: ({x:.2f}, {y:.2f}, {theta:.2f}), \n \t Reward acumulado: {total_reward:.2f}, \n \t Velocidad: {action[0]:.2f}")
 
     # Resultados del episodio
     episode_result = "ÉXITO" if not truncated else "TIMEOUT" if steps >= env.max_steps else "FALLO"
@@ -61,6 +62,9 @@ for episode in range(num_episodes):
     
     all_rewards.append(total_reward)
     all_steps.append(steps)
+
+    # Guarda Resultados
+    extract_metrics(env, episode, True)
 
 # Estadísticas finales
 print(f"\nESTADÍSTICAS FINALES:")
