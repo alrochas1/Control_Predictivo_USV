@@ -180,3 +180,4 @@ legacy/
 tb_logs/
 images/
 ackermann_ppo_model copy.zip
+visualize_tray.py

@@ -6,7 +6,7 @@ from gym.env import AckermannTrakingEnv  # Importa tu entorno
 from tray.tracker import extract_metrics  # Función para extraer métricas y gráficas
 
 
-model_path="ackermann_ppo_model.zip"
+model_path="controller/ackermann_ppo_model.zip"
 num_episodes=1
 render=True
 

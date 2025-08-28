@@ -15,10 +15,16 @@ y_range = (-8, 8)  # Rango en el eje y
 
 
 # Parametros para el control
-kp = 10.0
-ki = 20.0
+kp = 5.0
+ki = 10.0
 kd = 0.1
 
 max_lateral_error = 20
 
 waypoint_threshold = 0.3 # metros para considerar que se alcanzó un waypoint
+
+
+# Trayectoria Predefinida para comparativas
+
+tray_x = [0,  8, 10, 32, 40, 25, 15, 8]
+tray_y = [0,-12, 10, 12,  0,-10, -5, 8]

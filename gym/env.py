@@ -12,7 +12,7 @@ from models.ackermann_model import AckermannModel as model
 
 class AckermannTrakingEnv(gym.Env):
 
-    def __init__(self):
+    def __init__(self, compare=False):
         super(AckermannTrakingEnv, self).__init__()
 
         # Modelo del vehiculo
@@ -35,9 +35,9 @@ class AckermannTrakingEnv(gym.Env):
         )
         
         # Inicializar el estado de la simulación
-        self.reference_trajectory = aux.get_reference_trajectory()
+        self.reference_trajectory = aux.get_reference_trajectory(predefined=compare)
         self.dt = config.dt
-        self.max_steps = 50/config.dt
+        self.max_steps = 100/config.dt
         self.current_step = 0
         self.x_final, self.y_final, _ = self.reference_trajectory[-1]
         self.steering_turn_penalty = 0
@@ -73,13 +73,13 @@ class AckermannTrakingEnv(gym.Env):
         x_target, y_target, theta_target = target_point
         x, y, theta = self.vehicle_pose
     
-        # 1. Vector desde el coche al objetivo
+        # Vector desde el coche al objetivo
         dx = x_target - x
         dy = y_target - y
         distance = np.sqrt((x_target - x)**2 + (y_target - y)**2)
         # print(f"Distance to target: {distance:.3f} m")
         
-        # 2. ERROR LATERAL (Cross-track error): 
+        # ERROR LATERAL (Cross-track error): 
         # Proyección del vector en la dirección perpendicular a la orientación actual
         # Esto nos dice "qué tan a la izquierda o derecha de mi camino está el objetivo"
         tangent_vector = np.array([np.cos(theta_target), np.sin(theta_target)])
@@ -92,7 +92,7 @@ class AckermannTrakingEnv(gym.Env):
         lateral_error = np.dot(vehicle_to_target, normal_vector)
         
 
-        # 3. ERROR DE ORIENTACIÓN: 
+        # ERROR DE ORIENTACIÓN: 
         # Ángulo hacia el objetivo menos orientación actual
         if distance > 0.1:  # Si estamos suficientemente lejos
             # Calcular geométricamente (normal)
@@ -161,36 +161,23 @@ class AckermannTrakingEnv(gym.Env):
 
     
     def step(self, action):
-        # 1. Parsear la acción: [velocidad (v), ángulo de dirección (delta)]
+
+        # Parsear la acción: [velocidad (v), ángulo de dirección (delta)]
         v, delta = action
 
-        # DEBUG
-        old_waypoint_index = self.current_waypoint_index
-        old_target = self.reference_trajectory[old_waypoint_index]
-        # END DEBUG
-
-        # 2. Actualizar el waypoint si es necesario
+        # Actualizar el waypoint si es necesario
         self.update_waypoint_index()
         
-        # 2. Aplicar la acción al modelo cinemático del vehículo
-        # (Usa TU función aquí)
+        # Aplicar la acción al modelo cinemático del vehículo
         x_old, y_old, theta_old = self.vehicle_pose
         x, y, theta = self.vehicle.update(x_old, y_old, theta_old, v, delta, self.dt)
         self.vehicle_pose = np.array([x, y, theta])
         # print(f"Posicion: ({new_x:.2f}, {new_y:.2f}, {new_theta:.2f}), Velocidad: {v:.2f}")
 
-        # 3. Calcular la nueva observación (los nuevos errores)
+        # Calcular la nueva observación (los nuevos errores)
         lateral_error, orientation_error = self.calculate_errors()
         self.state = np.array([lateral_error, orientation_error], dtype=np.float32)
 
-        # DEBUG
-        # if abs(orientation_error) > 1.0:  # Si hay un salto grande
-            # print(f"¡SALTO DETECTADO!")
-            # print(f"Estado actual: {self.state}")
-            # print(f"Waypoint anterior: {old_waypoint_index}, Target: {old_target}")
-            # print(f"Waypoint nuevo: {self.current_waypoint_index}")
-            # print(f"Error normalizado: {orientation_error}")
-        # END DEBUG
 
         # ===================================================
         # ============= SISTEMAS DE RECOMPENSAS =============
@@ -203,7 +190,7 @@ class AckermannTrakingEnv(gym.Env):
 
         # 2. RECOMPENSA por SEGUIMIENTO PRECISO (exponencial inversa al error)
         tracking_reward = (
-            np.exp(-0.5  * abs(lateral_error)) + 
+            np.exp(-1.0  * abs(lateral_error)) + 
             np.exp(-2.0 * abs(orientation_error))
         ) * 10*self.dt
 
@@ -222,23 +209,7 @@ class AckermannTrakingEnv(gym.Env):
             progress_reward = 10.0 * progress_delta  # Grande por avanzar
         self.prev_progress = current_progress
 
-        # 5. PENALIZACIÓN por GIRO CONTINUO EXCESIVO
-        extended_turn_penalty = 0.0
-        # if hasattr(self, 'steering_history'):
-        #     # 5 segundos de historial
-        #     samples_to_check = int(5.0 / self.dt)
-        #     recent_steering = self.steering_history[-samples_to_check:] 
-            
-        #     # Mínimo 1 segundo de datos para evaluar
-        #     if len(recent_steering) >= int(1.0 / self.dt):
-        #         large_steering = all(abs(s) > 0.7 for s in recent_steering)
-                
-        #         if large_steering:
-        #             extended_turn_penalty = 0*100.0  # Penalización continua
-        #             if self.current_step % int(1 / self.dt) == 0:  # Log cada 1 segundo
-        #                 print("⚠️  Penalización: Giro continuo prolongado")
-
-        # 6. RECOMPENSA por VELOCIDAD ADAPTADA a la CURVATURA
+        # 5. RECOMPENSA por VELOCIDAD ADAPTADA a la CURVATURA
         curvature_reward = 0.0
         if self.current_waypoint_index < len(self.reference_trajectory) - 1:
             current_point = self.reference_trajectory[self.current_waypoint_index]
@@ -254,14 +225,8 @@ class AckermannTrakingEnv(gym.Env):
             # Recompensa por ajustarse a la velocidad deseada
             speed_error = abs(v - desired_speed)
             curvature_reward = 5 * np.exp(-2.0 * speed_error) * self.dt
-            
-            # Debug info cada 5 segundos de simulación
-            # if self.current_step % int(5.0 / self.dt) == 0:
-            #     print(f"🔄 Curvatura: {trajectory_curvature:.2f}, "
-            #         f"Velocidad deseada: {desired_speed:.2f}m/s, "
-            #         f"Actual: {v:.2f}m/s, Reward: {curvature_reward:.2f}")
-                
-        # 7. CONDICIONES DE TERMINACIÓN con RECOMPENSAS FINALES
+
+        # 6. CONDICIONES DE TERMINACIÓN con RECOMPENSAS FINALES
         terminated = False
         truncated = False
         completion_bonus = 0.0
@@ -290,7 +255,6 @@ class AckermannTrakingEnv(gym.Env):
             curvature_reward +
             completion_bonus -
             jerk_penalty -
-            extended_turn_penalty -
             failure_penalty
         )
         # print(f"Step {self.current_step}: Reward: {reward:.2f} = "
@@ -301,11 +265,11 @@ class AckermannTrakingEnv(gym.Env):
         # ===================================================
         # ===================================================
             
-        # 5. Comprobar condiciones de terminación (truncated es por límite de pasos)
+        # Comprobar condiciones de terminación (truncated es por límite de pasos)
         self.current_step += 1
         truncated = self.current_step >= self.max_steps
         
-        # 6. Información de debug (opcional)
+        # Información de debug (opcional)
         info = {
             "pose": self.vehicle_pose,
             "action": action,
@@ -326,7 +290,7 @@ class AckermannTrakingEnv(gym.Env):
         self.posx_history.append(x)
         self.posy_history.append(y)
 
-        # 7. Devolver la tupla (obs, reward, terminated, truncated, info)
+        # Devolver la tupla (obs, reward, terminated, truncated, info)
         return self.state, reward, terminated, truncated, info
 
 
@@ -384,8 +348,8 @@ class AckermannTrakingEnv(gym.Env):
             plt.show()
 
 
+    # Devuelve métricas resumidas del episodio
     def get_metrics(self):
-        """Devuelve métricas resumidas del episodio"""
         if not self.speed_history:
             return {}
             

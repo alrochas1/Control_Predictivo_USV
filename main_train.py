@@ -49,7 +49,7 @@ model = PPO(
 print("Comenzando entrenamiento...")
 try:
     model.learn(
-        total_timesteps=100000,
+        total_timesteps=200000,
         tb_log_name="PPO_ACKERMANN",
         callback=callback
     )
@@ -58,7 +58,7 @@ except KeyboardInterrupt:
 
 # Guardar modelo
 print("Guardando modelo...")
-model.save("ackermann_ppo_model")
+model.save("controller/ackermann_ppo_model")
 
 # Cerrar entorno
 env.close()
