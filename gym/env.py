@@ -7,7 +7,7 @@ from matplotlib.patches import FancyArrow
 
 import config
 from tray import aux
-from models.ackermann_model import AckermannModel as model
+from models.ackermann_model import AckermannModel_Noise as model
 
 
 class AckermannTrakingEnv(gym.Env):

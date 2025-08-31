@@ -1,11 +1,15 @@
 import numpy as np
 
 # Parametros del modelo
-L = 0.3
+L = 0.25
 max_steer = 50
 max_steer_rad = np.radians(max_steer)
 vmax = 2.5
 vmin = 0.0
+
+velocity_noise_scale = 0.5
+steering_noise_scale = 0.5
+odometry_noise_scale = 0.5
 
 # Parámetros para la generación de la trayectoria
 dt = 0.01
