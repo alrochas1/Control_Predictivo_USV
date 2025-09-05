@@ -42,7 +42,7 @@ model = PPO(
     ent_coef=0.01,           # Coeficiente de entropía (exploración)
     vf_coef=0.5,             # Coeficiente value function
     max_grad_norm=0.5,       # Clip gradientes
-    tensorboard_log="./tb_logs/"  # Logs para TensorBoard
+    tensorboard_log="./tb_logs/"  # Logs
 )
 
 # Entrenar

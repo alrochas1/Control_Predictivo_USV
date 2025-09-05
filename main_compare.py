@@ -4,6 +4,7 @@ import numpy as np
 import config
 from gym.env import AckermannTrakingEnv
 from stable_baselines3 import PPO
+from matplotlib.gridspec import GridSpec
 from controller.pid_controller import PIDController  # Importa tu PID
 
 # Evalúa un controlador (PID o RL) en el entorno y devuelve las métricas
@@ -75,8 +76,24 @@ def evaluate_controller(env, controller_type, controller_obj, num_episodes=1, re
     }
 
 
+def calculate_jerk(actions, dt):
+    steering_angles = np.array(actions)[:, 1]  # Extraer solo los ángulos de dirección
+    if len(steering_angles) < 2:
+        return np.zeros_like(steering_angles)
+    
+    # Primera derivada (velocidad angular)
+    angular_velocity = np.gradient(steering_angles, dt)
+    
+    # Segunda derivada (jerk angular)
+    jerk = np.gradient(angular_velocity, dt)
+    
+    return jerk
+
+
 # Genera gráficas comparativas entre PID y RL
 def plot_comparison(pid_results, rl_results, reference_trajectory):
+
+    # Primera figura: Comparativas básicas
     fig, axes = plt.subplots(3, 2, figsize=(15, 12))
     
     # Extraer datos del primer episodio para comparar
@@ -84,72 +101,132 @@ def plot_comparison(pid_results, rl_results, reference_trajectory):
     rl_poses = np.array(rl_results['poses'][0])
     pid_errors = np.array(pid_results['errors'][0])
     rl_errors = np.array(rl_results['errors'][0])
+    pid_actions = np.array(pid_results['actions'][0])
+    rl_actions = np.array(rl_results['actions'][0])
     
     # 1. Trayectoria seguida
-    axes[0, 0].plot(reference_trajectory[:, 0], reference_trajectory[:, 1], 
-                   'g-', linewidth=3, label='Referencia', alpha=0.7)
-    axes[0, 0].plot(pid_poses[:, 0], pid_poses[:, 1], 
-                   'b-', linewidth=2, label='PID')
-    axes[0, 0].plot(rl_poses[:, 0], rl_poses[:, 1], 
-                   'r-', linewidth=2, label='RL')
-    axes[0, 0].set_xlabel('X (m)')
-    axes[0, 0].set_ylabel('Y (m)')
-    axes[0, 0].set_title('Trayectoria Seguida')
-    axes[0, 0].legend()
-    axes[0, 0].grid(True)
+    gs = axes[0, 0].get_gridspec()
+    # Eliminar los dos primeros ejes para fusionarlos
+    for ax in [axes[0, 0], axes[0, 1]]:
+        ax.remove()
+    ax_traj = fig.add_subplot(gs[0, :])
+
+    ax_traj.plot(reference_trajectory[:, 0], reference_trajectory[:, 1], 
+                 'g--', linewidth=4, label='Referencia', alpha=0.5)
+    ax_traj.plot(pid_poses[:, 0], pid_poses[:, 1], 
+                 'b-', linewidth=1, label='PID')
+    ax_traj.plot(rl_poses[:, 0], rl_poses[:, 1], 
+                 'r-', linewidth=1, label='RL')
+
+    ax_traj.set_xlabel('X (m)')
+    ax_traj.set_ylabel('Y (m)')
+    ax_traj.set_title('Trayectoria Seguida')
+    ax_traj.legend()
+    ax_traj.grid(True)
     
     # 2. Error lateral comparativo
-    axes[0, 1].plot(pid_errors[:, 0], 'b-', label='PID', alpha=0.8)
-    axes[0, 1].plot(rl_errors[:, 0], 'r-', label='RL', alpha=0.8)
-    axes[0, 1].set_xlabel('Step')
-    axes[0, 1].set_ylabel('Error Lateral (m)')
-    axes[0, 1].set_title('Error Lateral Comparativo')
-    axes[0, 1].legend()
-    axes[0, 1].grid(True)
+    axes[1, 0].plot(pid_errors[:, 0], 'b-', label='PID', alpha=0.8)
+    axes[1, 0].plot(rl_errors[:, 0], 'r-', label='RL', alpha=0.8)
+    axes[1, 0].set_xlabel('Step')
+    axes[1, 0].set_ylabel('Error Lateral (m)')
+    axes[1, 0].set_title('Error Lateral Comparativo')
+    axes[1, 0].legend()
+    axes[1, 0].grid(True)
     
     # 3. Error de orientación comparativo
-    axes[1, 0].plot(pid_errors[:, 1], 'b-', label='PID', alpha=0.8)
-    axes[1, 0].plot(rl_errors[:, 1], 'r-', label='RL', alpha=0.8)
-    axes[1, 0].set_xlabel('Step')
-    axes[1, 0].set_ylabel('Error Orientación (rad)')
-    axes[1, 0].set_title('Error de Orientación Comparativo')
-    axes[1, 0].legend()
+    axes[1, 1].plot(pid_errors[:, 1], 'b-', label='PID', alpha=0.8)
+    axes[1, 1].plot(rl_errors[:, 1], 'r-', label='RL', alpha=0.8)
+    axes[1, 1].set_xlabel('Step')
+    axes[1, 1].set_ylabel('Error Orientación (rad)')
+    axes[1, 1].set_title('Error de Orientación Comparativo')
+    axes[1, 1].legend()
     axes[1, 1].grid(True)
     
     # 4. Ángulo de dirección
     pid_actions = np.array(pid_results['actions'][0])
     rl_actions = np.array(rl_results['actions'][0])
-    axes[1, 1].plot(pid_actions[:, 1], 'b-', label='PID', alpha=0.8)
-    axes[1, 1].plot(rl_actions[:, 1], 'r-', label='RL', alpha=0.8)
-    axes[1, 1].set_xlabel('Step')
-    axes[1, 1].set_ylabel('Ángulo de Dirección (rad)')
-    axes[1, 1].set_title('Acciones de Control - Dirección')
-    axes[1, 1].legend()
-    axes[1, 1].grid(True)
-    
-    # 5. Velocidad
-    axes[2, 0].plot(pid_actions[:, 0], 'b-', label='PID', alpha=0.8)
-    axes[2, 0].plot(rl_actions[:, 0], 'r-', label='RL', alpha=0.8)
+    axes[2, 0].plot(pid_actions[:, 1], 'b-', label='PID', alpha=0.8)
+    axes[2, 0].plot(rl_actions[:, 1], 'r-', label='RL', alpha=0.8)
     axes[2, 0].set_xlabel('Step')
-    axes[2, 0].set_ylabel('Velocidad (m/s)')
-    axes[2, 0].set_title('Acciones de Control - Velocidad')
+    axes[2, 0].set_ylabel('Ángulo de Dirección (rad)')
+    axes[2, 0].set_title('Acciones de Control - Dirección')
     axes[2, 0].legend()
     axes[2, 0].grid(True)
     
-    # 6. Reward acumulado comparativo
-    pid_rewards = np.cumsum([pid_results['rewards'][0] / len(pid_errors)] * len(pid_errors))
-    rl_rewards = np.cumsum([rl_results['rewards'][0] / len(rl_errors)] * len(rl_errors))
-    axes[2, 1].plot(pid_rewards, 'b-', label='PID', alpha=0.8)
-    axes[2, 1].plot(rl_rewards, 'r-', label='RL', alpha=0.8)
+    # 5. Velocidad
+    axes[2, 1].plot(pid_actions[:, 0], 'b-', label='PID', alpha=0.8)
+    axes[2, 1].plot(rl_actions[:, 0], 'r-', label='RL', alpha=0.8)
     axes[2, 1].set_xlabel('Step')
-    axes[2, 1].set_ylabel('Reward Acumulado')
-    axes[2, 1].set_title('Reward Comparativo')
+    axes[2, 1].set_ylabel('Velocidad (m/s)')
+    axes[2, 1].set_title('Acciones de Control - Velocidad')
     axes[2, 1].legend()
     axes[2, 1].grid(True)
     
     plt.tight_layout()
     plt.savefig('images/comparison_pid_vs_rl.png', dpi=300, bbox_inches='tight')
+    # plt.show()
+
+
+    # Segunda figura: Métricas avanzadas (IAE y Jerk)
+    fig2, axes = plt.subplots(2, 2, figsize=(15, 10))
+    
+    # 1. Error Cuadrático Medio Integrado (IAE) - Error Lateral
+    iae_pid_lateral = np.cumsum(np.abs(pid_errors[:, 0]))
+    iae_rl_lateral = np.cumsum(np.abs(rl_errors[:, 0]))
+    
+    axes[0, 0].plot(iae_pid_lateral, 'b-', label='PID', linewidth=2)
+    axes[0, 0].plot(iae_rl_lateral, 'r-', label='RL', linewidth=2)
+    axes[0, 0].set_xlabel('Step')
+    axes[0, 0].set_ylabel('IAE Lateral (m)')
+    axes[0, 0].set_title('Error Absoluto Integrado (IAE) - Error Lateral')
+    axes[0, 0].legend()
+    axes[0, 0].grid(True)
+    
+    # 2. Error Cuadrático Medio Integrado (IAE) - Error Orientación
+    iae_pid_orientation = np.cumsum(np.abs(pid_errors[:, 1]))
+    iae_rl_orientation = np.cumsum(np.abs(rl_errors[:, 1]))
+    
+    axes[0, 1].plot(iae_pid_orientation, 'b-', label='PID', linewidth=2)
+    axes[0, 1].plot(iae_rl_orientation, 'r-', label='RL', linewidth=2)
+    axes[0, 1].set_xlabel('Step')
+    axes[0, 1].set_ylabel('IAE Orientación (rad)')
+    axes[0, 1].set_title('Error Absoluto Integrado (IAE) - Error Orientación')
+    axes[0, 1].legend()
+    axes[0, 1].grid(True)
+    
+    # 3. Análisis de Suavidad (Jerk) - Dirección
+    # Jerk = derivada del ángulo de dirección (cambio brusco en el steering)
+    dt = config.dt  # Intervalo de tiempo entre steps
+    
+    # Calcular jerk para PID
+    pid_steering = pid_actions[:, 1]
+    pid_steering_rate = np.diff(pid_steering) / dt  # Velocidad de cambio
+    pid_jerk = np.diff(pid_steering_rate) / dt  # Aceleración de cambio (Jerk)
+    
+    # Calcular jerk para RL
+    rl_steering = rl_actions[:, 1]
+    rl_steering_rate = np.diff(rl_steering) / dt
+    rl_jerk = np.diff(rl_steering_rate) / dt
+    
+    # Unir los dos subplots inferiores para el análisis de jerk
+    gs = axes[1, 0].get_gridspec()
+    for ax in [axes[1, 0], axes[1, 1]]:
+        ax.remove()
+    ax_jerk = fig2.add_subplot(gs[1, :])
+
+    ax_jerk.plot(range(len(pid_jerk)), np.abs(pid_jerk), 'b-', label='PID', alpha=0.8)
+    ax_jerk.plot(range(len(rl_jerk)), np.abs(rl_jerk), 'r-', label='RL', alpha=0.8)
+    ax_jerk.set_xlabel('Step')
+    ax_jerk.set_ylabel('|Jerk| (rad/s³)')
+    ax_jerk.set_title('Análisis de Suavidad - Jerk en Dirección')
+    ax_jerk.legend()
+    ax_jerk.grid(True)
+    ax_jerk.set_yscale('log')  # Escala logarítmica para mejor visualización
+        
+    plt.tight_layout()
+    plt.savefig('images/advanced_metrics_iae_jerk.png', dpi=300, bbox_inches='tight')
     plt.show()
+
     
     # Estadísticas numéricas
     print("\n" + "="*50)
