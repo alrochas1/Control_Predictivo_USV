@@ -68,7 +68,7 @@ class TrackingCallback(BaseCallback):
         plt.plot(episodes, self.episode_rewards, 'bo-', alpha=0.7, 
              markersize=4, linewidth=1, label='Recompensa por episodio')
         
-        # Media móvil con ventana más grande (20-30% del total de episodios)
+        # Media móvil con ventana
         window_size = max(5, min(20, len(self.episode_rewards) // 3))  # Ajuste automático
         # if window_size > 0:
         #     moving_avg = np.convolve(self.episode_rewards, np.ones(window_size)/window_size, mode='valid')

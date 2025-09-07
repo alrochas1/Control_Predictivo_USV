@@ -1,9 +1,5 @@
 import config
 import numpy as np
-import tensorflow as tf
-
-phi_max = 60*3.1415/180
-
 
 class AckermannModel:
     def __init__(self, wheelbase=0.25, max_steer_angle=40):

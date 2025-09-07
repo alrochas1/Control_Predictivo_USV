@@ -81,7 +81,6 @@ class AckermannTrakingEnv(gym.Env):
         
         # ERROR LATERAL (Cross-track error): 
         # Proyección del vector en la dirección perpendicular a la orientación actual
-        # Esto nos dice "qué tan a la izquierda o derecha de mi camino está el objetivo"
         tangent_vector = np.array([np.cos(theta_target), np.sin(theta_target)])
         normal_vector = np.array([-np.sin(theta_target), np.cos(theta_target)])
         
