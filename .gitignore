@@ -179,5 +179,7 @@ cython_debug/
 legacy/
 tb_logs/
 images/
+venv_tensor/
+
 ackermann_ppo_model copy.zip
 visualize_tray.py
